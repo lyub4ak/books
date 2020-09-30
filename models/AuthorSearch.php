@@ -12,13 +12,20 @@ use app\models\Author;
 class AuthorSearch extends Author
 {
     /**
+     * Books count.
+     *
+     * @var int
+     */
+    public $booksCount;
+
+    /**
      * {@inheritdoc}
      */
     public function rules()
     {
         return [
             [['id', 'created_by_id', 'updated_by_id', 'created_at', 'updated_at', 'is_deleted'], 'integer'],
-            [['name', 'biography'], 'safe'],
+            [['name', 'biography', 'booksCount'], 'safe'],
         ];
     }
 
@@ -40,13 +47,27 @@ class AuthorSearch extends Author
      */
     public function search($params)
     {
-        $query = Author::find()->notDeleted();
-
-        // add conditions that should always apply here
+        $query = Author::find()->select([
+            '{{%author}}.*',
+            '{{%book}}.id as bookId',
+            'COUNT({{%book}}.id) AS booksCount',
+        ])
+            ->joinWith('books')
+            ->notDeleted()
+            ->groupBy('{{%author}}.id');
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
         ]);
+
+        $sortAttributes = $dataProvider->getSort()->attributes;
+        // adds sorting by books count
+        $sortAttributes['booksCount'] = [
+            'asc' => ['booksCount' => SORT_ASC],
+            'desc' => ['booksCount' => SORT_DESC],
+            'label' => 'Books Count'
+        ];
+        $dataProvider->setSort(['attributes' => $sortAttributes]);
 
         $this->load($params);
 
@@ -68,6 +89,9 @@ class AuthorSearch extends Author
 
         $query->andFilterWhere(['like', 'name', $this->name])
             ->andFilterWhere(['like', 'biography', $this->biography]);
+
+        // filter by books count
+        $query->filterHaving(['booksCount' => $this->booksCount]);
 
         return $dataProvider;
     }

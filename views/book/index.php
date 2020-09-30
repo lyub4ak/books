@@ -29,9 +29,8 @@ $this->params['breadcrumbs'][] = $this->title;
             'id',
             'title',
             'annotation:ntext',
-//            'authors',
             [
-              'attribute' => 'authors',
+              'attribute' => 'authorName',
               'value' => function($book) {
                   return implode(', ', array_column($book->authors, 'name'));
               },

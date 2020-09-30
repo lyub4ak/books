@@ -12,13 +12,20 @@ use app\models\Book;
 class BookSearch extends Book
 {
     /**
+     * Name of book author.
+     *
+     * @var string
+     */
+    public $authorName;
+
+    /**
      * {@inheritdoc}
      */
     public function rules()
     {
         return [
             [['id', 'created_by_id', 'updated_by_id', 'created_at', 'updated_at', 'is_deleted'], 'integer'],
-            [['title', 'annotation'], 'safe'],
+            [['title', 'annotation', 'authorName'], 'safe'],
         ];
     }
 
@@ -40,13 +47,22 @@ class BookSearch extends Book
      */
     public function search($params)
     {
-        $query = Book::find()->notDeleted();
+        $query = Book::find()->notDeleted()->innerJoinWith('authors');
 
         // add conditions that should always apply here
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
         ]);
+
+        $sortAttributes = $dataProvider->getSort()->attributes;
+        // adds sorting by author name
+        $sortAttributes['authorName'] = [
+            'asc' => ['{{%author}}.name' => SORT_ASC],
+            'desc' => ['{{%author}}.name' => SORT_DESC],
+            'label' => 'Author Name'
+        ];
+        $dataProvider->setSort(['attributes' => $sortAttributes]);
 
         $this->load($params);
 
@@ -67,7 +83,9 @@ class BookSearch extends Book
         ]);
 
         $query->andFilterWhere(['like', 'title', $this->title])
-            ->andFilterWhere(['like', 'annotation', $this->annotation]);
+            ->andFilterWhere(['like', 'annotation', $this->annotation])
+            ->andFilterWhere(['like', '{{%author}}.name', $this->authorName]);
+
 
         return $dataProvider;
     }
